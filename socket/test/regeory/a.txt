@@ -1,0 +1,19 @@
+session_write_close()   函数，强制关闭session的读写锁。相当于强制性的结束掉sesssion的写入。就像是释放对session的锁。但是，不能够进行session文件的写入操作。
+
+https://log.zvz.im/2016/02/27/PHP-session/#作为session，
+
+
+stream_set_blocking就像是python的socket的client客户端的样子，来做recv的时候客户端的recv是阻塞的
+
+
+
+
+
+
+
+
+
+
+
+
+

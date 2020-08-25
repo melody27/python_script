@@ -1,0 +1,10 @@
+def student(name,gender,age=6,city='成都'):
+	print('name:'+name)
+	print('gender:'+gender)
+	print('age:%d'%(age))
+	print('所在城市:'+city)
+name=input('请输入姓名')
+gender=input('请输入性别')
+age=int(input('请输入年龄'))
+city=input('请输入所在城市')
+student(name,gender,age,city)

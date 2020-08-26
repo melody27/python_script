@@ -112,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 					session_write_close();			# 初次连接的话，实际上session中的writebuf并没有值
                     if ($writeBuff != "")			# 如果写入不为空的话，则进行writeBuff的写入操作。初次的连接并不会进入此处
 					{								
-            stream_set_blocking($res, false);		# 往php的socket套接字中写入高层的协议
+            			stream_set_blocking($res, false);		# 往php的socket套接字中写入高层的协议
 						$i = fwrite($res, $writeBuff); #socket_write($sock, $writeBuff, strlen($writeBuff));
 						if($i === false)				
 						{

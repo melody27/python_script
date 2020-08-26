@@ -1,16 +1,21 @@
 <?php
 
-$ss = fsockopen('www.melodyspace.cn',80);
+$ss = fsockopen('192.168.2.82',80);
 // stream_set_blocking($ss,false);
 if (!$ss){
     echo "报错楼d";
 }
 $out = "GET / HTTP/1.1\r\n";
-$out .= "Host: www.baidu.com\r\n";
+$out .= "Host: 192.168.2.82\r\n";
 $out .= "Connection: Close\r\n\r\n";
 fwrite($ss,$out);
-while (!feof($ss)){                 # 检测文件读取是否结束
-    echo fgets($ss,10);             # 从文件句柄中获取数据
+while ($o = fgets($ss,10)){
+    if($o == false){
+        break;
+    }
+    echo $o;
+
+
 }
 fclose($ss)                         # 关闭文件句柄
 ?>

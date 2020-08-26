@@ -11,7 +11,8 @@ import time
 import sys
 import logging
 
-# 不知怎么的，此脚本很慢。实际的话，需要进行优化
+# this is reGeorg Python'client listent to 127.0.0.1:80
+# this is available
 
 # constants
 BASICCHECKSTRING = "Georg says, 'All seems fine'"
@@ -124,7 +125,8 @@ class Session(Thread):
             gevent.joinall([gevent.spawn(self.reader),gevent.spawn(self.writer)])       # 将原本的多线程修改为协程
             # r.join()
             # w.join()
-            log.warning('[ {}:{} ] the socket connect is over  '.format(self.target,self.target_port))
+            
+            log.warning('\x1b[42m[ Client Over ]\x1b[0m {}:{} '.format(self.target,self.target_port))
 
     def reader(self):
         # global READ_TIMES
@@ -145,6 +147,7 @@ class Session(Thread):
                             pass
                         
                     else:
+                        log.error('[ {}:{} ] server:{} '.format(self.target,self.target_port,response.getheader('x-error')))
                         break
                         raise SocksProtocolNotImplemented("服务端已经关闭连接，退出")
                         
@@ -185,7 +188,7 @@ class Session(Thread):
                     if response.getheader("set-sookie") is not None:
                         self.cookie = response.getheader("set-cookie")
                 else:
-                    log.error('[ {}:{} ] remote server seem like error,x-status not ok  '.format(self.target,self.target_port))
+                    log.error('[ {}:{} ] server:{} '.format(self.target,self.target_port,response.getheader('x-error')))
                     break
             else:
                 log.error('[ {}:{} ] remote server status_code is not 200 '.format(self.target,self.target_port))
@@ -359,8 +362,11 @@ def askGeorg(ConnectString):
 if __name__ == "__main__":
 
 
+    # server_url = 'http://192.168.2.82/connect.php'
+    server_url = 'http://192.168.2.82/testconnect.php'
+
     try:
-        if not askGeorg("http://192.168.2.82/connect.php"):exit("目标不可用")
+        if not askGeorg(server_url):exit("目标不可用")
     except Exception as identifier:
         exit("the target page is not available")
     s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
@@ -370,14 +376,14 @@ if __name__ == "__main__":
     s.listen(4)
     while True:
         ss,addr = s.accept()
-        log.info('the client is {}'.format(str(addr[0])+':'+str(addr[1])))
+        log.info('\n\n\n\x1b[42m[ New Client ]\x1b[0m from {}'.format(str(addr[0])+':'+str(addr[1])))
         
         try:
-            if not askGeorg("http://192.168.2.82/connect.php"):exit("目标不可用")
+            if not askGeorg(server_url):exit("目标不可用")
         except Exception as identifier:
             exit("the target page is not available")
         
-        Session(ss,"http://192.168.2.82/connect.php").start()
+        Session(ss,server_url).start()
     s.close()
         
 

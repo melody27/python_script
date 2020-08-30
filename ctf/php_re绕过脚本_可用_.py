@@ -5,6 +5,8 @@ import re
 #此脚本对撞出的字符，都是单字节但是其对应ascii码大于127的字符。放心食用即可
 
 
+# php_re绕过脚本_可用_异或
+
 len_1 = 0xff
 
 start = input('输入')
@@ -20,3 +22,5 @@ for y in start:
             result2 += r'%ff'
 print(result)
 print(result2)
+
+

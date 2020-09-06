@@ -5,6 +5,11 @@ import base64
 import pymmh3
 import re
 import time
+import sys
+
+
+# 使用示例在readme.md中
+
 
 
 
@@ -45,10 +50,7 @@ class favicon(object):
 
 
 if __name__ == "__main__":
+    url = sys.argv[1]
 
-
-    data = favicon('http://www.baidu.com/favicon.ico')
+    data = favicon(url)
     print(data)
-    print("貌似导包失败哦`_`")
-    # data.get_hash()
-    # print(data.hash)

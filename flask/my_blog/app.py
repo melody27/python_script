@@ -9,19 +9,22 @@ import base64
 import re
 from tools.faviconhash import favicon
 from flask import Response,make_response
+import pymysql
+import time
+import datetime
 
+conn=pymysql.connect(host='localhost',
+                     port=3306,
+                     user='root',
+                     password='root',
+                     #database='test',
+                     charset='utf8')
 
 app = Flask(__name__,static_folder="static/")
 
 
-@app.route('/pwd/')
-def index():
-    return os.getcwd()
 
-@app.route('/hello')
-def hello():
-    name = request.args.get('name')
-    return render_template('index.html',content = name)
+
 
 #正常代码
 # @app.route('/test')
@@ -56,15 +59,9 @@ def test_string():
 @app.route('/')
 def souye():
 
-    index_1 = '''
-    there is a melody space index page
 
-    you can find certain tools that you want to 
-
-    there is a first tools <a href=./ShadonFaviconHash>计算shodan图标hash</a>
-    '''
-
-    index_1 = render_template_string(index_1)
+    day = 'welcome'
+    index_1 = render_template('index.html',page=day)
 
     #此处测试flask使用set_cookie
     # reg = make_response(index_1)
@@ -94,6 +91,10 @@ def ShadonFaviconHash():
     else:
         return render_template('favicon.html')
 
+
+@app.route('/study',methods = ['POST','GET'])
+def study():
+    if 
 
 
 

@@ -6,6 +6,6 @@ import subprocess
 
 import subprocess
 
-p = subprocess.Popen(['python'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+p = subprocess.Popen(['python3'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 output, err = p.communicate(b'print(1)\n')
 print("结果: " + output.decode('utf-8'))

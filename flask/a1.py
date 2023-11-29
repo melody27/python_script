@@ -1,19 +1,24 @@
-# 从flask这个包中 导入Flask这个类
-from flask import Flask
+from flask import url_for,Flask,render_template
 
-# 使用Flask类实例化一个app对象
-# __name__ :代表当前py文件模块
-# 1、出现Bug后可以帮助快速定位
-# 2、对于寻找模版文件，有一个相对路径
 app = Flask(__name__)
 
+@app.route("/hello/")
+@app.route('/hello/<name>')
+def index(name=None):
+    return render_template("hello.html",name = name)
+
+@app.route('/login')
+def login():
+    return 'login'
 
 
-# 创建一个路由和一个视图函数的映射
-@app.route('/')  # 根路由
-def hello_world():
-    return 'Hello World!'
 
-if __name__ == '__main__':
-    app.run()
+@app.route('/user/<username>')
+def profile(username):
+    return f'{username}\'s profile'
+
+
+
+if __name__ == "__main__":
+    app.run(host='0.0.0.0',port=8080,debug=True)
 

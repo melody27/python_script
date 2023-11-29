@@ -1,0 +1,45 @@
+<html>
+<head>
+    <title>registe</title>
+</head>
+
+
+<form action="/registe" method="post">
+
+    <!-- self.name
+    self.summary
+    self.desc
+    self.deadline
+
+    # for status
+    self.important
+    self.emergent
+    self.processing
+    self.status
+    self.priority -->
+
+
+
+    <input type="radio" name="type" value="Long_im_not"> 长期_非重要<br>
+    <input type="radio" name="type" value="Long_im"> 长期_重要<br>
+    <input type="radio" name="type" value="Trifle_small"> 琐碎_小<br>
+    <input type="radio" name="type" value="Trifle_big"> 琐碎_大<br>
+    <input type="radio" name="type" value="Trifle_long"> 琐碎_长期<br>
+
+    <input type="text" name="name" value="eating">name<br>
+    <input type="text" name="summary" value="eating lauch">summary<br>
+    <input type="text" name="desc" value="i have some fruit">desc<br>
+    <input type="text" name="deadline" value="2020-1-12">deadline<br>
+
+    
+    <input type="text" name="important" value="False">important<br>
+    <input type="text" name="emergent" value="True">emergent<br>
+    <input type="text" name="processing" value="True">processing<br>
+    <input type="text" name="status" value="over">status<br>
+    <input type="text" name="priority" value="1">priority<br>
+
+    <input type="submit">
+</form>
+
+
+</html>
